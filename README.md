@@ -19,6 +19,9 @@ Your repo gets cloned and in the second step all files within this folder will b
 
 There will be __only one commit__ which replaces all files with the new build.  
 
+The following graphic gives an overwiev whats happening
+![Diagram with checkout process](./documentation/Deployment-Process.png)
+
 ## Trigger this workflow    
 The deployment workflow is trigged by __pushing to your main/master branch__ or by an __WebHook__.  
 
