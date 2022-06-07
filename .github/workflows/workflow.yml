@@ -1,0 +1,145 @@
+name: deployment workflow
+# triggers for this workflow  
+on: 
+  push: 
+    branches:
+      - main
+      - master
+  repository_dispatch: 
+    # @see: https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event  
+    types:
+      - build-ready-to-deploy
+env:
+  # 1st block: 
+  # ********************************************************************
+  # these vars are equal to your .env-file,
+  # which is sourced by the docker-compose.yml  
+  BUILD_REPO: {{ place your repository/path-to-build here }}
+
+  HEROKU_REPO_BUILD_PATH: container/repos/build # no leading '/'
+  HEROKU_DOCKER_REPO_BUILD_PATH: /opt/heroku/repos/build
+
+  # the orign path is the folder, where the Heroku Repo gets cloned into 
+  # it's not exposed as volume  
+  HEROKU_DOCKER_REPO_ORIGN_PATH: /opt/heroku/repos/orign
+  
+  # default usage of Heroku App Name as GitHub secret  
+  HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+  # you can omit this var if you use encrypted envs (see step 3 below)  
+  HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+  
+  # If not set, var gets overriden in action ..
+  DEPLOY_DRYRUN: FALSE # write your booleans in UPPERCASE!
+  DEPLOY_BRANCH: main # falls back to 'default: main' in action if left empty here
+
+  # 2nd block: 
+  # ********************************************************************  
+  # envs for Heroku
+  HEROKU_ENV_FOLDER: ./deploy/data/envs
+  HEROKU_ENV_FILE: heroku_api.env
+  # your build should be uploaded as artifact in GitHub Actions  
+  # otherwise you can omit the 3rd step and copy your build directly to 
+  # the BUILD_FOLDER  
+  DEPLOY_ARTIFACT: deployment-package
+  DEPLOY_REPO: netzwerkproduktioner/deploy-to-heroku-public # change this path after forking/copying  
+  
+  # keep this vars unchanged  
+  DEPLOY_REPO_FOLDER: ./deploy
+  BUILD_FILES_FOLDER: ./build
+  
+  # keep this vars unchanged  
+  # /path/to/runner/deploy + same structure as deploy repo (container/repos/build)
+  BUILD_FOLDER: ./deploy/container/repos/build
+  ORIGN_FOLDER: ./deploy/container/repos/orign
+  TEST_DIR: ./deploy/test
+
+  # 3rd block: 
+  # ********************************************************************  
+  # Vars used for ssh key and commiting from the heroku container  
+  DEPLOY_BOT_NAME: deployment-robot
+  DEPLOY_BOT_MAIL: ${{ secrets.HEROKU_DEPLOY_MAIL }}
+  HEROKU_BOT_LOGIN_USERNAME: ${{ secrets.HEROKU_DEPLOY_USER }}
+
+jobs:   
+  deploy:
+    runs-on: ubuntu-latest
+    steps: 
+      # 1st - get the deploy repo  
+      - name: checkout repo
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.DEPLOY_REPO }}
+          path: ${{ env.DEPLOY_REPO_FOLDER }}    
+
+      # # variant a) (only for testing/simulation)
+      # # testing your setup by uploading a testing artifact  
+      # # remove this action after debugging  
+      # - name: upload test artifact
+      #   uses: actions/upload-artifact@v2
+      #   with: 
+      #     name: ${{ env.DEPLOY_ARTIFACT }}
+      #     path: ${{ env.TEST_DIR }}
+
+      # # 2nd - getting the build files
+      # # variant 2a) 
+      # # download the deploymant artifact 
+      # - name: download deployment package
+      #   uses: actions/download-artifact@v2
+      #   with: 
+      #     name: ${{ env.DEPLOY_ARTIFACT }}
+      #     path: ${{ env.BUILD_FILES_FOLDER }}
+
+      # variant 2b) - pull build from a repo  
+      # comment this step if you use an deployment artifact (2a)  
+      - name: pull build repo  
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.BUILD_REPO }}
+          token: ${{ secrets.PAT_GitHubActions }} 
+          # `GH_PAT` is a secret that contains your PAT
+          # @see: https://github.com/actions/checkout#Push-a-commit-using-the-built-in-token
+          path: ${{ env.BUILD_FILES_FOLDER }}
+
+      # moving your artifact or pulled files to the build folder
+      - name: sync cloned files to build folder
+        run: |
+          rsync -av \
+          --exclude='.git' \
+          --exclude='.github' \
+          --recursive \
+          ${BUILD_FILES_FOLDER}/ \
+          ${BUILD_FOLDER}
+        shell: bash
+
+      # 3rd    
+      # - name: decrypting credentials and populating heroku env
+      #   # Hint: You can omit this action, if you store your API Key 
+      #   # as GitHub Actions Secret. Should it be part of your repo, 
+      #   # the key must be encrypted.  
+
+      #   # HEROKU_ENV_FILE stores only the API Key (@see: readme.md)  
+      #   # The gpg encrypted env is part of your repo.  
+      #   # The env gets decrypted and the API Key is sourced as 
+      #   # HEROKU_API_KEY to the runners instance. 
+      #   # The heroku api key is stored in global env $GITHUB_ENV. 
+      #   # housekeeping inclusive: removes gpg-files and env  
+      #   run: | 
+      #     cd ${HEROKU_ENV_FOLDER}
+      #     gpg --decrypt --quiet --batch --yes \
+      #     --passphrase=${{ secrets.AUTOMATION_SECRET }} \
+      #     --output ${HEROKU_ENV_FILE} ./${HEROKU_ENV_FILE}.gpg
+      #     source ${HEROKU_ENV_FILE}
+      #     echo "HEROKU_API_KEY=${HEROKU_API_KEY}" >> $GITHUB_ENV        
+      #     rm ./${HEROKU_ENV_FILE}.gpg
+      #     rm ${HEROKU_ENV_FILE}
+      #   shell: bash
+
+      # 4th    
+      - name: commit and push directly to Heroku Git (via Heroku CLI)
+        # Note: always run own docker setups in an action, which uses 'composite'
+
+        # @param:   populated $HEROKU_API_KEY in $GITHUB_ENV
+        # expects:  Downloaded deployment-package into $BUILD_FOLDER
+
+        # this action does your deployment to Heroku (see: details/description in action)
+        uses: ./deploy/.github/actions/heroku/deploy-to-heroku

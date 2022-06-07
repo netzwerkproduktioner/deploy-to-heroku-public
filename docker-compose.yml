@@ -1,0 +1,38 @@
+# Docker Compose (see https://docs.docker.com/compose/)
+#
+# set common current version mac, linux
+# see https://docs.docker.com/compose/compose-file/compose-versioning/#compatibility-matrix
+version: "3.7"
+
+services:
+
+  # do not change name of service, important for docker-compose exec calls  
+  heroku:  
+    build: ./.github/images/heroku-deploy 
+    image: heroku:v1
+    container_name: heroku-deploy
+    hostname: heroku-deploy
+    # stdin_open: true # activate interactive session (container keeps alive)
+    # tty: true # activate terminal session (in container)      
+    environment:
+      - HEROKU_API_KEY=${HEROKU_API_KEY}
+      - GITHUB_SHA=${GITHUB_SHA}
+      - DEPLOY_DRYRUN=${DEPLOY_DRYRUN:-TRUE} # set default if empty
+      - DEPLOY_BRANCH=${DEPLOY_BRANCH:-main} # set default if empty
+      - HEROKU_APP_NAME=${HEROKU_APP_NAME}
+      - DEPLOY_BOT_NAME=${DEPLOY_BOT_NAME}
+      - DEPLOY_BOT_MAIL=${DEPLOY_BOT_MAIL}
+      - HEROKU_BOT_LOGIN_USERNAME=${HEROKU_BOT_LOGIN_USERNAME}
+    entrypoint: 
+      - /opt/entrypoint.sh
+    volumes: 
+      - ./container/ssh:/root/.ssh 
+      - ${HEROKU_REPO_BUILD_PATH:-./container/repos/build}:${HEROKU_DOCKER_REPO_BUILD_PATH:-/opt/heroku/repos/build}
+    networks:
+      heroku-net:
+        aliases:
+          - cli.heroku-deploy.test  
+
+# to see which container belong to the network use docker network inspect on cli
+networks:
+  heroku-net:

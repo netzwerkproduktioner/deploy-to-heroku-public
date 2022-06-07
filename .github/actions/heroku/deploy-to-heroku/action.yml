@@ -1,0 +1,66 @@
+name: run deployment on Heroku Git
+author: Björn Englert
+description: > 
+  Runs the Heroku CLI in a docker container.  
+  Clones your Heroku Git repository (main branch!) into the container and 
+  replace all files from the cloned repo with your files in build folder  
+  Commit and push the new version to Heroku Git.  
+  Further details can be found in entrypoint.sh (./.github/images/heroku-deploy).  
+inputs:
+  IMAGE_NAME: 
+    description: the name of the temporary heroku docker image with tag
+    default: heroku:deploy
+    required: true
+  DRY_RUN: 
+    description: >
+      You can run this action and the entrypoint script in "dry-run" mode.  
+      You get a commit preview in your CI log and no files are pushed to your repo.  
+      It defaults to true if this parameter is not set.  
+      Note! This var gets overridden if the env 'DEPLOY_DRYRUN' is already set in your global env.  
+    default: TRUE # write your pseudo boolean in UPPERCASE!
+    required: false
+  BRANCH:
+    description: >
+      Set the default branch you use on your Heroku Platform.  
+      Normally it should be 'main'.  
+      This var is used as parameter when git push <$BRANCH> is called.  
+      So you can also use special branches like testbranch:main as described in the 
+      Heroku docs (@see: https://devcenter.heroku.com/articles/git#deploy-your-code).  
+      Note! This var gets overridden if the env 'DEPLOY_BRANCH' is already set in your global env. 
+    default: main
+    required: true
+
+runs: 
+  using: 'composite'
+  steps:
+    - name: Deploy to Heroku Git
+      # --rm: Automatically remove the container when it exits
+      # -v: mount volume
+      # --env VAR=value or --env $VAR
+      # remind syntax: docker run <options> <image-tag-name> <args>      
+      # args: sh -c "multiple shell commands separated with &&"
+
+      # Be careful! NO blank space at end of line after '\'.
+      # Tag the build like ':<my-tag>' and reference name and tag in docker run 
+      # (i.e. docker run <my-image-name>:<tag>).  
+      # Note: without tags docker run looks for ':latest' first! (globally on docker hub!)      
+      run:  |
+        cd ${DEPLOY_REPO_FOLDER}
+        echo "Build image with Heroku CLI.."
+        docker build --no-cache --tag ${{inputs.IMAGE_NAME}} ./.github/images/heroku-deploy
+        echo "Run the Heroku CLI container, run entrypoint script.."
+        docker run --rm \
+        -v `pwd`/${HEROKU_REPO_BUILD_PATH}:${HEROKU_DOCKER_REPO_BUILD_PATH} \
+        --env HEROKU_API_KEY=${HEROKU_API_KEY:?"missing api key"} \
+        --env HEROKU_APP_NAME=${HEROKU_APP_NAME:?"missing app name"} \
+        --env GITHUB_SHA=${GITHUB_SHA:?"missing GITHUB_SHA"} \
+        --env DEPLOY_BOT_NAME=${DEPLOY_BOT_NAME:?"missing bot name"} \
+        --env DEPLOY_BOT_MAIL=${DEPLOY_BOT_MAIL:?"missing bot mail"} \
+        --env HEROKU_BOT_LOGIN_USERNAME=${HEROKU_BOT_LOGIN_USERNAME:?"missing login name"} \
+        --env HEROKU_DOCKER_REPO_BUILD_PATH=${HEROKU_DOCKER_REPO_BUILD_PATH:?"missing build path"} \
+        --env HEROKU_DOCKER_REPO_ORIGN_PATH=${HEROKU_DOCKER_REPO_ORIGN_PATH:?"missing repo path"} \
+        --env DEPLOY_DRYRUN=${DEPLOY_DRYRUN:-${{inputs.DRY_RUN}}} \
+        --env DEPLOY_BRANCH=${DEPLOY_BRANCH:-${{inputs.BRANCH}}} \
+        ${{inputs.IMAGE_NAME}} \
+        sh -c "/opt/entrypoint.sh"
+      shell: bash
