@@ -51,7 +51,6 @@ Use the following code at the end of another/previous workflow to trigger this w
     |   +-- container
     |   |   +-- repos
     |   |   |   +-- build
-    |   |   |   +-- orign
     |   |   +-- ssh
     |   +-- data  
     |   |   +-- configs
@@ -104,7 +103,7 @@ The vars you have to define for your local setup are already declared in ./.gith
     DEPLOY_BOT_MAIL={{ place your mail addresse here }}
     HEROKU_BOT_LOGIN_USERNAME={{ place your heroko login name here (i.e. mail address) }}
 
-## Create heroku_api.env file and encrypt it  
+### Create heroku_api.env file and encrypt it  
 Replace the existing _heroku_api.env.gpg_ in __./data/envs__  
 How the encryption should be done is described in the readme within the same folder. 
 Keep the password, you will need it in the next step.
@@ -115,12 +114,12 @@ The heroku_api.env should only have one line:
 
 _You can choose an other name for this env-file. Then you have to change the var 'HEROKU_ENV_FILE' in workflow.yml too._  
 
-### How the encryption is done  
+#### How the encryption is done  
 Use interactive encryption of env-files, then __store the passphrase as GitHub-secret__. 
 
     gpg --symmetric --cipher-algo AES256 <my_file>    
 
-## Create a GitHub Secret with the decryption password  
+### Create a GitHub Secret with the decryption password  
 Create a GitHub Actions Secret. Name it _'AUTOMATION_SECRET'_ and store your password for decryption in it. 
 
 _Hint: if you already use that name as a secret you have to rename the var 'AUTOMATION_SECRET' in the workflow.yml_  
