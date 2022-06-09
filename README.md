@@ -1,4 +1,4 @@
-# About: app-solo-deploy-heroku  
+# About: deploy-to-heroku  
 Artifact repository for direct deploy to Heroku Git with GitHub Actions.  
 Deploy your code to the Heroku Git as described here: https://devcenter.heroku.com/articles/git  
 
