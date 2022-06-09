@@ -128,12 +128,13 @@ _Hint: if you already use that name as a secret you have to rename the var 'AUTO
 # First Run  
 ## local (Docker setup)  
 You can test the setup (without GitHub Actions) in your local environment with docker.  
-Make a copy of 'sample.env' remove the prefix 'sample' and fill in your vars.  
-Keep the paths unchanged. 
-Copy some files in the folder ./container/repos/build.  
-Run: 
+The container will run the entrypoint script (./.github/images/heroku-deploy), which falls back to the vars defined in your .envs file (Note: GitHub actions will not run locally, so your settings in action.yml and workflow.yml will be ignored).  
+* Make a copy of 'sample.env' remove the prefix 'sample' and fill in your vars.  
+* Keep the paths unchanged. 
+* Copy some files in the folder ./container/repos/build.  
+* Run: 
 
-    docker-compose build && docker-compose up  
+        docker-compose build && docker-compose up  
 
 Be aware not to run docker-compose in daemon mode (__omit__ the parameter -d) so you can see the process on your command line.  
 The setup is set to 'dry-run' so no changes will be applied to your repository.  
