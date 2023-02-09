@@ -5,9 +5,9 @@ Deploy your code to the Heroku Git as described here: https://devcenter.heroku.c
 # The workflow  
 This is a deployment workflow, which can be run in two different ways.  
 It relies on a previous process or workflow which build/collect/assembles your files into one place: an artifact or an repository.  
-This workflow starts from this point it downloads an build-artifact from your GitHub-Actions workflwo or pulls a build from a repository.  
+This workflow starts from this point it downloads an build-artifact from your GitHub-Actions workflow or pulls a build from a repository.  
 
-You have to choose between these two ways of pluging in this artifact.  
+You have to choose between these two ways of plugging in this artifact.  
 
 ## A) __Use an deployment artifact__ from GitHub-Actions (commented)  
 Your previous process created an build artifact within your GitHub-Actions-Workflow. The name of your __artifact__ must be set with the var __DEPLOY_ARTIFACT__ in the workflow file. The build artifact get automatically downloaded into the __BUILD_FILES_FOLDER__ folder.  
